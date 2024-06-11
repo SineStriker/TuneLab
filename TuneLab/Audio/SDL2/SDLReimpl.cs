@@ -12,7 +12,7 @@ internal static class SDLReimpl
     private const string nativeLibName = "SDL2";
 
     #endregion
-    
+
     #region SDL_stdinc.h
 
     /**
@@ -27,7 +27,7 @@ internal static class SDLReimpl
 
     /**
      * Mutex functions
-        */
+     */
     [DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
     public static extern IntPtr SDL_CreateMutex();
 
@@ -68,8 +68,8 @@ internal static class SDLReimpl
     public static extern int SDL_SemValue(IntPtr sem);
 
     /**
-         * Condition variable functions
-         */
+     * Condition variable functions
+     */
     [DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
     public static extern IntPtr SDL_CreateCond();
 
