@@ -91,6 +91,8 @@ internal class SDLAudioEngine : IAudioEngine
 
     public void Destroy()
     {
+        Console.WriteLine("Destroy SDL Playback");
+        
         // 先关闭音频
         Pause();
 

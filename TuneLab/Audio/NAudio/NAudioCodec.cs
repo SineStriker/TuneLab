@@ -25,7 +25,7 @@ internal class NAudioCodec : IAudioCodec
         return new AudioInfo() { duration = reader.TotalTime.TotalSeconds };
     }
 
-    static byte[] To16BitsBytes(float[] data)
+    public static byte[] To16BitsBytes(float[] data)
     {
         byte[] results = new byte[data.Length * 2];
         for (int i = 0; i < data.Length; i++)
@@ -35,6 +35,7 @@ internal class NAudioCodec : IAudioCodec
             results[i * 2] = shortBytes[0];
             results[i * 2 + 1] = shortBytes[1];
         }
+
         return results;
     }
 
@@ -75,7 +76,7 @@ internal class NAudioCodec : IAudioCodec
         readonly AudioFileReader mAudioFileReader;
     }
 
-    class NAudioResamplerStream : IAudioStream
+    public class NAudioResamplerStream : IAudioStream
     {
         public int SamplingRate { get; }
         public int ChannelCount { get; }
@@ -83,7 +84,8 @@ internal class NAudioCodec : IAudioCodec
 
         public NAudioResamplerStream(IAudioProvider input, int outputSamplingRate)
         {
-            mMediaFoundationResampler = new(new NAudioWaveProvider(input), WaveFormat.CreateIeeeFloatWaveFormat(outputSamplingRate, input.ChannelCount));
+            mMediaFoundationResampler = new(new NAudioWaveProvider(input),
+                WaveFormat.CreateIeeeFloatWaveFormat(outputSamplingRate, input.ChannelCount));
             mMediaFoundationResampler.ResamplerQuality = 60;
             mSampleProvider = mMediaFoundationResampler.ToSampleProvider();
             SamplingRate = outputSamplingRate;
@@ -102,12 +104,13 @@ internal class NAudioCodec : IAudioCodec
         }
 
         readonly MediaFoundationResampler mMediaFoundationResampler;
-        readonly ISampleProvider mSampleProvider; 
+        readonly ISampleProvider mSampleProvider;
     }
 
     class NAudioWaveProvider(IAudioProvider provider) : IWaveProvider
     {
-        public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(provider.SamplingRate, provider.ChannelCount);
+        public WaveFormat WaveFormat { get; } =
+            WaveFormat.CreateIeeeFloatWaveFormat(provider.SamplingRate, provider.ChannelCount);
 
         public int Read(byte[] buffer, int offset, int count)
         {
@@ -122,6 +125,7 @@ internal class NAudioCodec : IAudioCodec
                 buffer[offset++] = bytes[2];
                 buffer[offset++] = bytes[3];
             }
+
             return count;
         }
     }

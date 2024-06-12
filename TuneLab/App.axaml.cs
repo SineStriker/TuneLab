@@ -8,6 +8,9 @@ using TuneLab.Views;
 using TuneLab.Utils;
 using System.Diagnostics;
 using System;
+using System.IO;
+using System.Reflection;
+using TuneLab.Audio.FFmpeg;
 using TuneLab.GUI;
 using TuneLab.Extensions.Voices;
 using TuneLab.Audio.NAudio;
@@ -38,10 +41,7 @@ public partial class App : Application
                     return;
                 }
 
-                desktop.Startup += (s, e) =>
-                {
-                    AnimationManager.SharedManager.Init();
-                };
+                desktop.Startup += (s, e) => { AnimationManager.SharedManager.Init(); };
                 desktop.Exit += (s, e) =>
                 {
                     ExtensionManager.Destroy();
@@ -49,7 +49,8 @@ public partial class App : Application
                     mLockFile?.Dispose();
                 };
 
-                AudioUtils.Init(new NAudioCodec());
+                AudioUtils.Init(new FFmpegCodec(Path.Combine(
+                    Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "ffmpeg")));
                 AudioEngine.Init(new SDLAudioEngine());
                 ExtensionManager.LoadExtensions();
                 desktop.MainWindow = new MainWindow();
@@ -59,7 +60,10 @@ public partial class App : Application
                 var dialog = new Dialog();
                 dialog.SetTitle("Launch Failed");
                 dialog.SetMessage(ex.ToString());
-                dialog.AddButton("Quit", Dialog.ButtonType.Primary).Clicked += () => { Process.GetCurrentProcess().Kill(); };
+                dialog.AddButton("Quit", Dialog.ButtonType.Primary).Clicked += () =>
+                {
+                    Process.GetCurrentProcess().Kill();
+                };
                 dialog.Show();
             }
 
