@@ -1,15 +1,19 @@
-﻿using NAudio.Wave;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection.PortableExecutable;
 using System.Text;
+using NAudio.Wave;
+using NAudio.Flac;
+using NLayer.NAudioSupport;
+using TuneLab.Base.Science;
 
 namespace TuneLab.Audio.NAudio;
 
 internal class NAudioCodec : IAudioCodec
 {
-    public IEnumerable<string> AllDecodableFormats { get; } = ["wav", "mp3", "aiff", "aac", "wma", "mp4"];
+    public IEnumerable<string> AllDecodableFormats { get; } = ["wav", "mp3", "flac", "aiff", "aif", "aifc"];
 
     public void EncodeToWav(string path, float[] buffer, int samplingRate, int bitPerSample, int channelCount)
     {
@@ -21,7 +25,7 @@ internal class NAudioCodec : IAudioCodec
 
     public AudioInfo GetAudioInfo(string path)
     {
-        using var reader = new AudioFileReader(path);
+        using var reader = new NAudioFileReader(path);
         return new AudioInfo() { duration = reader.TotalTime.TotalSeconds };
     }
 
@@ -54,26 +58,61 @@ internal class NAudioCodec : IAudioCodec
         public int SamplingRate { get; }
         public int ChannelCount { get; }
         public int SamplesPerChannel { get; }
+        public TimeSpan TotalTime { get; }
 
         public NAudioFileReader(string path)
         {
-            mAudioFileReader = new(path);
-            SamplingRate = mAudioFileReader.WaveFormat.SampleRate;
-            ChannelCount = mAudioFileReader.WaveFormat.Channels;
-            SamplesPerChannel = (int)mAudioFileReader.Length;
+            mWaveStream = Create(path);
+            mSampleProvider = mWaveStream.ToSampleProvider();
+            SamplingRate = mWaveStream.WaveFormat.SampleRate;
+            ChannelCount = mWaveStream.WaveFormat.Channels;
+            TotalTime = mWaveStream.TotalTime;
+            var count = TotalTime.TotalSeconds * SamplingRate;
+            SamplesPerChannel = count.Round();
         }
 
         public void Dispose()
         {
-            mAudioFileReader.Dispose();
+            mWaveStream.Dispose();
         }
 
         public void Read(float[] buffer, int offset, int count)
         {
-            mAudioFileReader.Read(buffer, offset, count);
+            mSampleProvider.Read(buffer, offset, count);
         }
 
-        readonly AudioFileReader mAudioFileReader;
+        static WaveStream Create(string path)
+        {
+            var ext = Path.GetExtension(path);
+            byte[] buffer = new byte[4];
+            string tag = "";
+            using (var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                stream.Read(buffer, 0, 4);
+                tag = Encoding.UTF8.GetString(buffer.AsSpan(0, 4));
+            }
+            if (tag == "RIFF")
+            {
+                return new WaveFileReader(path);
+            }
+            if (ext == ".mp3")
+            {
+                return new Mp3FileReaderBase(path, wf => new Mp3FrameDecompressor(wf));
+            }
+            if (tag == "fLaC")
+            {
+                return new FlacReader(path);
+            }
+            if (ext == ".aiff" || ext == ".aif" || ext == ".aifc")
+            {
+                return new AiffFileReader(path);
+            }
+
+            return new AudioFileReader(path);
+        }
+
+        readonly WaveStream mWaveStream;
+        readonly ISampleProvider mSampleProvider;
     }
 
     public class NAudioResamplerStream : IAudioStream
@@ -114,7 +153,7 @@ internal class NAudioCodec : IAudioCodec
 
         public int Read(byte[] buffer, int offset, int count)
         {
-            int length = count * sizeof(float);
+            int length = count / sizeof(float);
             float[] samples = new float[length];
             provider.Read(samples, 0, length);
             for (int i = 0; i < length; i++)
